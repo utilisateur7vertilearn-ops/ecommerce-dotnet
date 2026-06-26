@@ -36,7 +36,7 @@ jobs:
     # pour tracer les déploiements dans l'UI GitHub
     environment:
       name: preprod
-      url: https://preprod.example.com   # ← remplacez par votre URL réelle
+      url: ${{ vars.PREPROD_URL }}
 
     steps:
       - name: Checkout code
@@ -78,7 +78,7 @@ jobs:
     # configurés dans Settings > Environments > production
     environment:
       name: production
-      url: https://www.example.com   # ← remplacez par votre URL réelle
+      url: ${{ vars.PROD_URL }}
 
     steps:
       - name: Checkout code
