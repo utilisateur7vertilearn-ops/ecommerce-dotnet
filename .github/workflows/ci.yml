@@ -1,0 +1,97 @@
+# ============================================================
+# CI — Intégration Continue
+# Déclencheurs : tout push ou PR vers main
+#
+# Deux jobs indépendants lancés en parallèle :
+#   1. build-and-test  : compile la solution .NET et lance les tests
+#   2. docker-scan     : construit les images Docker et les analyse avec Trivy
+# ============================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ----------------------------------------------------------
+  # JOB 1 : Build .NET + Tests
+  # ----------------------------------------------------------
+  build-and-test:
+    name: Build & Test (.NET 10)
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Récupère le code source du dépôt
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Installe le SDK .NET 10 sur le runner
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      # 3. Restaure les dépendances NuGet (équivalent npm install)
+      - name: Restore dependencies
+        run: dotnet restore ECommerce.slnx
+
+      # 4. Compile en mode Release — échoue si le code ne compile pas
+      - name: Build (Release)
+        run: dotnet build ECommerce.slnx --configuration Release --no-restore
+
+      # 5. Lance les tests unitaires/intégration
+      #    (aucun projet de test pour l'instant → la commande réussit à vide)
+      - name: Run tests
+        run: dotnet test ECommerce.slnx --configuration Release --no-build --verbosity normal
+
+  # ----------------------------------------------------------
+  # JOB 2 : Build Docker + Scan Trivy
+  # Construit chaque image et bloque si une faille CRITICAL ou HIGH est détectée
+  # ----------------------------------------------------------
+  docker-scan:
+    name: Docker Build & Trivy Scan
+    runs-on: ubuntu-latest
+    # Le job est une matrice : chaque service est scanné indépendamment
+    strategy:
+      fail-fast: false   # un service en échec ne stoppe pas les autres
+      matrix:
+        include:
+          - service: catalog
+            dockerfile: src/ECommerce.Catalog.Api/Dockerfile
+          - service: ordering
+            dockerfile: src/ECommerce.Ordering.Api/Dockerfile
+          - service: gateway
+            dockerfile: src/ECommerce.Gateway/Dockerfile
+          - service: web
+            dockerfile: src/ECommerce.Web/Dockerfile
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Construit l'image Docker (contexte = racine du repo, comme indiqué dans les Dockerfiles)
+      - name: Build Docker image — ${{ matrix.service }}
+        run: |
+          docker build \
+            -t ecommerce-${{ matrix.service }}:${{ github.sha }} \
+            -f ${{ matrix.dockerfile }} \
+            .
+
+      # Installe Trivy (scanner de vulnérabilités open-source d'Aqua Security)
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sh -s -- -b /usr/local/bin
+
+      # Scanne l'image et ÉCHOUE si une faille CRITICAL ou HIGH est trouvée
+      # --exit-code 1 : retourne un code d'erreur si des vulnérabilités correspondent
+      - name: Scan image with Trivy — ${{ matrix.service }}
+        run: |
+          trivy image \
+            --severity CRITICAL,HIGH \
+            --exit-code 1 \
+            --no-progress \
+            ecommerce-${{ matrix.service }}:${{ github.sha }}
