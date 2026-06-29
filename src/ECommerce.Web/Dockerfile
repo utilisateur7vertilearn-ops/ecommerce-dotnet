@@ -13,15 +13,12 @@ RUN dotnet restore src/ECommerce.Web/ECommerce.Web.csproj
 COPY src/ECommerce.Web/ src/ECommerce.Web/
 COPY src/ECommerce.ServiceDefaults/ src/ECommerce.ServiceDefaults/
 RUN dotnet publish src/ECommerce.Web/ECommerce.Web.csproj \
-    --configuration Release --no-restore -o /app/publish
+    --configuration Release -o /app/publish
 
 # ---- Étape 2 : image finale (runtime chiselé, non-root) ----
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS final
 WORKDIR /app
 COPY --from=build /app/publish .
-
-# Development pour rester cohérent avec les API (pas de redirection HTTPS forcée en démo).
-ENV ASPNETCORE_ENVIRONMENT=Development
 
 USER $APP_UID
 EXPOSE 8080

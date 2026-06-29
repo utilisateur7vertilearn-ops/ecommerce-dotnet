@@ -13,15 +13,12 @@ RUN dotnet restore src/ECommerce.Gateway/ECommerce.Gateway.csproj
 COPY src/ECommerce.Gateway/ src/ECommerce.Gateway/
 COPY src/ECommerce.ServiceDefaults/ src/ECommerce.ServiceDefaults/
 RUN dotnet publish src/ECommerce.Gateway/ECommerce.Gateway.csproj \
-    --configuration Release --no-restore -o /app/publish
+    --configuration Release -o /app/publish
 
 # ---- Étape 2 : image finale (runtime chiselé, non-root) ----
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS final
 WORKDIR /app
 COPY --from=build /app/publish .
-
-# /health n'est mappé qu'en Development (cf. ServiceDefaults.MapDefaultEndpoints).
-ENV ASPNETCORE_ENVIRONMENT=Development
 
 USER $APP_UID
 EXPOSE 8080

@@ -1,0 +1,70 @@
+global:
+  imagePullPolicy: IfNotPresent
+  aspnetcoreEnvironment: Production
+
+catalog:
+  image:
+    repository: registry.example.com/ecommerce-catalog
+    tag: "1.0.0"
+  replicas: 2
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "512Mi"
+  hpa:
+    minReplicas: 2
+    maxReplicas: 5
+
+ordering:
+  image:
+    repository: registry.example.com/ecommerce-ordering
+    tag: "1.0.0"
+  replicas: 2
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "512Mi"
+  hpa:
+    minReplicas: 2
+    maxReplicas: 5
+
+gateway:
+  image:
+    repository: registry.example.com/ecommerce-gateway
+    tag: "1.0.0"
+  replicas: 2
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "512Mi"
+  hpa:
+    minReplicas: 2
+    maxReplicas: 3
+
+web:
+  image:
+    repository: registry.example.com/ecommerce-web
+    tag: "1.0.0"
+  replicas: 2
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "512Mi"
+  hpa:
+    minReplicas: 2
+    maxReplicas: 5
+
+ingress:
+  host: ecommerce.preprod.example.com

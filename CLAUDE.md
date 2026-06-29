@@ -14,13 +14,25 @@ dotnet build
 # Build a single project
 dotnet build src/ECommerce.Catalog.Api
 
+# Run all tests
+dotnet test ECommerce.slnx --configuration Release
+
+# Run tests for a single project
+dotnet test tests/ECommerce.Catalog.Tests
+
+# Run a single test class or method (filter by display name)
+dotnet test tests/ECommerce.Catalog.Tests --filter "FullyQualifiedName~GetProductsTests"
+
 # Trust the dev HTTPS certificate (required once per machine)
 dotnet dev-certs https --trust
+
+# Run without Aspire (Docker Compose — no dashboard, plain HTTP on fixed ports)
+docker compose up --build
+# Catalog: http://localhost:5001  Ordering: http://localhost:5002
+# Gateway: http://localhost:5000  Web:     http://localhost:5003
 ```
 
-There are no tests in this repository.
-
-After starting, the terminal prints a **Login URL** (`https://localhost:<port>/login?t=<token>`). Open that URL to reach the Aspire dashboard. The port is dynamic — never hardcode it. From the dashboard, click the `web` resource to reach the Blazor UI.
+After starting with Aspire, the terminal prints a **Login URL** (`https://localhost:<port>/login?t=<token>`). Open that URL to reach the Aspire dashboard. The port is dynamic — never hardcode it. From the dashboard, click the `web` resource to reach the Blazor UI.
 
 ## Architecture
 
@@ -49,3 +61,18 @@ Both databases are **in-memory only** (EF Core `UseInMemoryDatabase`). All data 
 ## Adding API endpoints
 
 Follow the minimal-API pattern already used: add a static `MapXxxEndpoints` extension method on `IEndpointRouteBuilder` (see [CatalogEndpoints.cs](src/ECommerce.Catalog.Api/Endpoints/CatalogEndpoints.cs)), call it from `Program.cs`, and declare request/response shapes as `record` types in the same file.
+
+## Tests
+
+Integration tests live in `tests/ECommerce.Catalog.Tests/`. They use `WebApplicationFactory<Program>` (xUnit + `Microsoft.AspNetCore.Mvc.Testing`) and replace the EF Core provider with a fresh `UseInMemoryDatabase` instance per factory. Each test class receives the factory via `IClassFixture<CatalogApiFactory>` — the factory is shared within the class but isolated across classes by using a `Guid`-named DB.
+
+When adding tests for a new API project, follow the same pattern: create a `WebApplicationFactory` subclass that swaps the `DbContextOptions` descriptor, then group related endpoint tests into classes that share one factory instance.
+
+## CI / CD
+
+Two GitHub Actions workflows in `.github/workflows/`:
+
+- **ci.yml** — triggers on every push/PR to `main`. Two parallel jobs: `build-and-test` (restore → build Release → `dotnet test`) and `docker-scan` (build each Docker image, then scan with Trivy for CRITICAL/HIGH CVEs; fails the job if any are found).
+- **cd.yml** — deployment pipeline with a manual gate before the production stage.
+
+Docker images are built with the context set to the repo root (not the service subdirectory) because the `COPY` instructions in each Dockerfile reference sibling projects (e.g., `ECommerce.ServiceDefaults`).
