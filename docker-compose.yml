@@ -1,0 +1,54 @@
+services:
+
+  catalog:
+    build:
+      context: .
+      dockerfile: src/ECommerce.Catalog.Api/Dockerfile
+    image: ecommerce-catalog:latest
+    ports:
+      - "5001:8080"
+    environment:
+      ASPNETCORE_HTTP_PORTS: "8080"
+    depends_on: []
+
+  ordering:
+    build:
+      context: .
+      dockerfile: src/ECommerce.Ordering.Api/Dockerfile
+    image: ecommerce-ordering:latest
+    ports:
+      - "5002:8080"
+    environment:
+      ASPNETCORE_HTTP_PORTS: "8080"
+      # Service discovery : remplace https+http://catalog résolu par Aspire
+      services__catalog__http__0: "http://catalog:8080"
+    depends_on:
+      - catalog
+
+  gateway:
+    build:
+      context: .
+      dockerfile: src/ECommerce.Gateway/Dockerfile
+    image: ecommerce-gateway:latest
+    ports:
+      - "5000:8080"
+    environment:
+      ASPNETCORE_HTTP_PORTS: "8080"
+      services__catalog__http__0: "http://catalog:8080"
+      services__ordering__http__0: "http://ordering:8080"
+    depends_on:
+      - catalog
+      - ordering
+
+  web:
+    build:
+      context: .
+      dockerfile: src/ECommerce.Web/Dockerfile
+    image: ecommerce-web:latest
+    ports:
+      - "5003:8080"
+    environment:
+      ASPNETCORE_HTTP_PORTS: "8080"
+      services__gateway__http__0: "http://gateway:8080"
+    depends_on:
+      - gateway

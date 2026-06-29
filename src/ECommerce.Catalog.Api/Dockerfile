@@ -17,17 +17,13 @@ RUN dotnet restore src/ECommerce.Catalog.Api/ECommerce.Catalog.Api.csproj
 COPY src/ECommerce.Catalog.Api/ src/ECommerce.Catalog.Api/
 COPY src/ECommerce.ServiceDefaults/ src/ECommerce.ServiceDefaults/
 RUN dotnet publish src/ECommerce.Catalog.Api/ECommerce.Catalog.Api.csproj \
-    --configuration Release --no-restore -o /app/publish
+    --configuration Release -o /app/publish
 
 # ---- Étape 2 : image finale (runtime chiselé, non-root) ----
 # L'image "chiseled" ne contient ni shell ni gestionnaire de paquets → plus petite, plus sûre.
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS final
 WORKDIR /app
 COPY --from=build /app/publish .
-
-# /health et /alive ne sont mappés qu'en Development (cf. ServiceDefaults.MapDefaultEndpoints).
-# Sans ça, la vérification `curl .../health` de l'UC5 renverrait 404.
-ENV ASPNETCORE_ENVIRONMENT=Development
 
 # $APP_UID est défini par l'image .NET : on exécute en utilisateur NON-root.
 USER $APP_UID
