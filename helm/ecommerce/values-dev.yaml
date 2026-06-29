@@ -1,0 +1,34 @@
+global:
+  imagePullPolicy: Never
+  aspnetcoreEnvironment: Development
+
+catalog:
+  image:
+    tag: latest
+  replicas: 1
+  hpa:
+    maxReplicas: 2
+
+ordering:
+  image:
+    tag: latest
+  replicas: 1
+  hpa:
+    maxReplicas: 2
+
+gateway:
+  image:
+    tag: latest
+  replicas: 1
+  hpa:
+    maxReplicas: 1
+
+web:
+  image:
+    tag: latest
+  replicas: 1
+  hpa:
+    maxReplicas: 2
+
+ingress:
+  host: ecommerce.localhost
